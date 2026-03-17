@@ -3,6 +3,7 @@ import '../models/task.dart';
 import 'add_task_page.dart';
 import '../models/recommendation_engine.dart';
 import 'task_detail_page.dart';
+import '../services/task_database.dart';
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -14,62 +15,48 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController timeController = TextEditingController();
   int selectedEnergy = 3;
 
-  final List<Task> tasks = [
-    Task(
-      id: '1',
-      title: 'Study Biology',
-      category: 'Study',
-      deadline: DateTime.now().add(const Duration(days: 2)),
-      createdAt: DateTime.now(),
-      estimatedMinutes: 90,
-      difficulty: 4,
-      priority: 5,
-      subject: 'Biology',
-      chapters: 3,
-    ),
-    Task(
-      id: '2',
-      title: 'Clean bedroom',
-      category: 'Cleaning',
-      deadline: DateTime.now().add(const Duration(days: 1)),
-      createdAt: DateTime.now(),
-      estimatedMinutes: 45,
-      difficulty: 2,
-      priority: 3,
-      cleaningDetails: 'Desk, floor, clothes',
-    ),
-    Task(
-      id: '3',
-      title: 'Go to the bank',
-      category: 'Errands',
-      deadline: DateTime.now().add(const Duration(days: 3)),
-      createdAt: DateTime.now(),
-      estimatedMinutes: 30,
-      difficulty: 1,
-      priority: 4,
-      errandDetails: 'Deposit check',
-      isCompleted: true,
-    ),
-  ];
+  
+  List<Task> tasks = [];
+  bool isLoading = true;
 
-  void toggleTaskCompletion(Task task) {
-    setState(() {
-      task.isCompleted = !task.isCompleted;
-    });
+Future<void> toggleTaskCompletion(Task task) async {
+  setState(() {
+    task.isCompleted = !task.isCompleted;
+  });
+
+  await TaskDatabase.instance.updateTask(task);
+}
+
+Future<void> deleteTask(Task task) async {
+  setState(() {
+    tasks.remove(task);
+  });
+
+  await TaskDatabase.instance.deleteTask(task.id);
+
+  if (!mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('${task.title} deleted'),
+      duration: const Duration(seconds: 2),
+    ),
+  );
+}
+  @override
+  void initState() {
+    super.initState();
+    loadTasks();
   }
 
-  void deleteTask(Task task) {
-    setState(() {
-      tasks.remove(task);
-    });
+  Future<void> loadTasks() async {
+    final loadedTasks = await TaskDatabase.instance.getAllTasks();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${task.title} deleted'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
+    setState(() {
+      tasks = loadedTasks;
+      isLoading = false;
+    });
+}
 
   void onStartPressed() {
   timeController.clear();
@@ -218,22 +205,23 @@ class _HomePageState extends State<HomePage> {
     },
   );
 }
-  Future<void> onAddTaskPressed() async {
-    final newTask = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const AddTaskPage(),
-      ),
-    );
+Future<void> onAddTaskPressed() async {
+  final newTask = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => const AddTaskPage(),
+    ),
+  );
 
-    if (newTask != null) {
-      setState(() {
-        tasks.add(newTask);
-      });
-    }
+  if (newTask != null && newTask is Task) {
+    await TaskDatabase.instance.insertTask(newTask);
+
+    setState(() {
+      tasks.add(newTask);
+    });
   }
-
-  Future<void> onTaskTap(Task task) async {
+}
+Future<void> onTaskTap(Task task) async {
   final updatedTask = await Navigator.push(
     context,
     MaterialPageRoute(
@@ -242,6 +230,8 @@ class _HomePageState extends State<HomePage> {
   );
 
   if (updatedTask != null && updatedTask is Task) {
+    await TaskDatabase.instance.updateTask(updatedTask);
+
     setState(() {
       final index = tasks.indexWhere((t) => t.id == updatedTask.id);
       if (index != -1) {
@@ -259,6 +249,17 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Task Manager'),
+          centerTitle: true,
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
     final pendingTasks = tasks.where((task) => !task.isCompleted).toList();
     final completedTasks = tasks.where((task) => task.isCompleted).toList();
 
