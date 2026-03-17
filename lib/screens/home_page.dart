@@ -252,7 +252,7 @@ Future<void> onTaskTap(Task task) async {
     if (isLoading) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Task Manager'),
+          title: const Text('TaskFlow'),
           centerTitle: true,
         ),
         body: const Center(
@@ -265,7 +265,7 @@ Future<void> onTaskTap(Task task) async {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Task Manager'),
+        title: const Text('TaskFlow'),
         centerTitle: true,
       ),
       floatingActionButton: FloatingActionButton(
