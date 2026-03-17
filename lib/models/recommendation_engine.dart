@@ -56,8 +56,8 @@ class RecommendationEngine {
 
     return
         0.30 * urgency +
-        0.25 * priority +
-        0.20 * timeFit +
+        0.20 * priority +
+        0.25 * timeFit +
         0.15 * energyFit +
         0.10 * age;
   }

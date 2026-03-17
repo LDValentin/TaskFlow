@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/task.dart';
 import 'add_task_page.dart';
 import '../models/recommendation_engine.dart';
-
+import 'task_detail_page.dart';
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -11,6 +11,9 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final TextEditingController timeController = TextEditingController();
+  int selectedEnergy = 3;
+
   final List<Task> tasks = [
     Task(
       id: '1',
@@ -69,35 +72,189 @@ class _HomePageState extends State<HomePage> {
   }
 
   void onStartPressed() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Start flow coming soon'),
+  timeController.clear();
+  selectedEnergy = 3;
+
+  showDialog(
+    context: context,
+    builder: (startDialogContext) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Start Session'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: timeController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Time available (minutes)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text('Energy: $selectedEnergy'),
+                Slider(
+                  min: 1,
+                  max: 5,
+                  divisions: 4,
+                  value: selectedEnergy.toDouble(),
+                  label: selectedEnergy.toString(),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      selectedEnergy = value.toInt();
+                    });
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(startDialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final timeAvailable =
+                      int.tryParse(timeController.text.trim());
+
+                  if (timeAvailable == null || timeAvailable <= 0) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please enter a valid time.'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  final rankedTasks = RecommendationEngine.rankTasks(
+                    tasks,
+                    timeAvailable,
+                    selectedEnergy,
+                  );
+
+                  Navigator.of(startDialogContext).pop();
+
+                  if (!mounted) return;
+
+                  if (rankedTasks.isEmpty) {
+                    showDialog(
+                      context: context,
+                      builder: (emptyDialogContext) => AlertDialog(
+                        title: const Text('No task found'),
+                        content: const Text(
+                          'No available tasks match your current time and energy.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () =>
+                                Navigator.of(emptyDialogContext).pop(),
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      ),
+                    );
+                    return;
+                  }
+
+                  final bestTask = rankedTasks.first;
+                  final topAlternatives = rankedTasks.skip(1).take(2).toList();
+
+                  showDialog(
+                    context: context,
+                    builder: (resultDialogContext) => AlertDialog(
+                      title: const Text('Recommended Task'),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            bestTask.title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text('Category: ${bestTask.category}'),
+                          Text(
+                            'Estimated time: ${bestTask.estimatedMinutes} min',
+                          ),
+                          Text('Difficulty: ${bestTask.difficulty}'),
+                          Text('Priority: ${bestTask.priority}'),
+                          const SizedBox(height: 16),
+                          if (topAlternatives.isNotEmpty) ...[
+                            const Text(
+                              'Top alternatives:',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            ...topAlternatives.map(
+                              (task) => Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Text('• ${task.title}'),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () =>
+                              Navigator.of(resultDialogContext).pop(),
+                          child: const Text('Close'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                child: const Text('Recommend'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+  Future<void> onAddTaskPressed() async {
+    final newTask = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AddTaskPage(),
       ),
     );
+
+    if (newTask != null) {
+      setState(() {
+        tasks.add(newTask);
+      });
+    }
   }
 
-  Future<void> onAddTaskPressed() async {
-
-  final newTask = await Navigator.push(
+  Future<void> onTaskTap(Task task) async {
+  final updatedTask = await Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (context) => const AddTaskPage(),
+      builder: (context) => TaskDetailPage(task: task),
     ),
   );
 
-  if (newTask != null) {
+  if (updatedTask != null && updatedTask is Task) {
     setState(() {
-      tasks.add(newTask);
+      final index = tasks.indexWhere((t) => t.id == updatedTask.id);
+      if (index != -1) {
+        tasks[index] = updatedTask;
+      }
     });
   }
 }
 
-  void onTaskTap(Task task) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Open details for: ${task.title}'),
-      ),
-    );
+  @override
+  void dispose() {
+    timeController.dispose();
+    super.dispose();
   }
 
   @override

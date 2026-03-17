@@ -3,11 +3,14 @@ import '../models/task.dart';
 import 'dart:math';
 
 class AddTaskPage extends StatefulWidget {
-  const AddTaskPage({super.key});
+  final Task? existingTask;
+
+  const AddTaskPage({super.key, this.existingTask});
 
   @override
   State<AddTaskPage> createState() => _AddTaskPageState();
 }
+
 
 class _AddTaskPageState extends State<AddTaskPage> {
 
@@ -40,41 +43,55 @@ class _AddTaskPageState extends State<AddTaskPage> {
       });
     }
   }
+  @override
+void initState() {
+  super.initState();
 
-  void saveTask() {
+  if (widget.existingTask != null) {
+    final task = widget.existingTask!;
 
-    if (titleController.text.isEmpty ||
-        estimatedMinutesController.text.isEmpty ||
-        selectedDeadline == null) {
-      return;
-    }
+    titleController.text = task.title;
+    estimatedMinutesController.text = task.estimatedMinutes.toString();
+    selectedCategory = task.category;
+    selectedDeadline = task.deadline;
+    difficulty = task.difficulty;
+    priority = task.priority;
 
-    final task = Task(
-      id: Random().nextDouble().toString(),
-      title: titleController.text,
-      category: selectedCategory,
-      deadline: selectedDeadline!,
-      createdAt: DateTime.now(),
-      estimatedMinutes: int.parse(estimatedMinutesController.text),
-      difficulty: difficulty,
-      priority: priority,
-      subject: selectedCategory == 'Study'
-          ? subjectController.text
-          : null,
-      chapters: selectedCategory == 'Study'
-          ? int.tryParse(chaptersController.text)
-          : null,
-      cleaningDetails: selectedCategory == 'Cleaning'
-          ? cleaningController.text
-          : null,
-      errandDetails: selectedCategory == 'Errands'
-          ? errandsController.text
-          : null,
-    );
-
-    Navigator.pop(context, task);
+    subjectController.text = task.subject ?? '';
+    chaptersController.text = task.chapters?.toString() ?? '';
+    cleaningController.text = task.cleaningDetails ?? '';
+    errandsController.text = task.errandDetails ?? '';
+  }
+}
+void saveTask() {
+  if (titleController.text.isEmpty ||
+      estimatedMinutesController.text.isEmpty ||
+      selectedDeadline == null) {
+    return;
   }
 
+  final task = Task(
+    id: widget.existingTask?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+    title: titleController.text.trim(),
+    category: selectedCategory,
+    deadline: selectedDeadline!,
+    createdAt: widget.existingTask?.createdAt ?? DateTime.now(),
+    estimatedMinutes: int.parse(estimatedMinutesController.text),
+    difficulty: difficulty,
+    priority: priority,
+    isCompleted: widget.existingTask?.isCompleted ?? false,
+    subject: selectedCategory == 'Study' ? subjectController.text.trim() : null,
+    chapters: selectedCategory == 'Study'
+        ? int.tryParse(chaptersController.text.trim())
+        : null,
+    cleaningDetails:
+        selectedCategory == 'Cleaning' ? cleaningController.text.trim() : null,
+    errandDetails:
+        selectedCategory == 'Errands' ? errandsController.text.trim() : null,
+  );
+
+  Navigator.pop(context, task);
+}
   Widget buildCategoryFields() {
 
     if (selectedCategory == 'Study') {
@@ -124,8 +141,8 @@ class _AddTaskPageState extends State<AddTaskPage> {
     return Scaffold(
 
       appBar: AppBar(
-        title: const Text("Add Task"),
-      ),
+  title: Text(widget.existingTask == null ? 'Add Task' : 'Edit Task'),
+        ),
 
       body: ListView(
         padding: const EdgeInsets.all(16),
