@@ -1,4 +1,4 @@
-import 'package:task_manager/models/task.dart';
+import 'package:TaskFlow/models/task.dart';
 
 class RecommendationEngine {
 

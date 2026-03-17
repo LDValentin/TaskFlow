@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/task.dart';
-import 'dart:math';
 
 class AddTaskPage extends StatefulWidget {
   final Task? existingTask;
@@ -158,7 +157,7 @@ void saveTask() {
           const SizedBox(height: 16),
 
           DropdownButtonFormField(
-            value: selectedCategory,
+            initialValue: selectedCategory,
             items: const [
               DropdownMenuItem(value: 'Study', child: Text('Study')),
               DropdownMenuItem(value: 'Cleaning', child: Text('Cleaning')),

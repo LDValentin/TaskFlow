@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/task.dart';
 import 'add_task_page.dart';
-import '../services/recommendation_engine.dart';
+import '../models/recommendation_engine.dart';
 import 'task_detail_page.dart';
 import '../services/task_database.dart';
 class HomePage extends StatefulWidget {
